@@ -30,6 +30,52 @@ func cls() {
 	cmd.Run()
 }
 
+type gotr struct {
+	cmd   *exec.Cmd
+	going bool
+}
+
+func (g *gotr) run(n string) {
+	m.Lock()
+	if g.going {
+		return
+	}
+	g.going = true
+	m.Unlock()
+
+	if *r && g.cmd != nil {
+		if g.cmd.ProcessState == nil || !g.cmd.ProcessState.Exited() {
+			if g.cmd.Process != nil {
+				if err := g.cmd.Process.Signal(os.Interrupt); err != nil {
+					g.cmd.Process.Kill()
+				}
+				g.cmd.Process.Wait()
+			}
+		}
+	}
+	g.cmd = exec.Command(flag.Arg(0))
+	args := make([]string, flag.NArg())
+	for i := 0; i < len(args); i++ {
+		args[i] = flag.Arg(i)
+		if args[i] == "/_" {
+			args[i] = n
+		}
+	}
+	g.cmd.Args = args
+	g.cmd.Stdout = os.Stdout
+	g.cmd.Stderr = os.Stderr
+	if *c {
+		cls()
+	}
+	if err := g.cmd.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, os.Args[0], err)
+	}
+
+	m.Lock()
+	g.going = false
+	m.Unlock()
+}
+
 func main() {
 	flag.Parse()
 
@@ -56,13 +102,11 @@ func main() {
 		}
 	}()
 
-	var cmd *exec.Cmd
-	var going bool
-
+	app := new(gotr)
 	for {
 		select {
 		case ev := <-w.Events:
-			if ev.Op&fsnotify.Rename == fsnotify.Rename {
+			if ev.Op == fsnotify.Create || ev.Op == fsnotify.Rename {
 				w.Add(ev.Name)
 			}
 			fn, err := filepath.Abs(ev.Name)
@@ -75,48 +119,7 @@ func main() {
 				continue
 			}
 			m.Unlock()
-			if ev.Op == fsnotify.Create || ev.Op == fsnotify.Rename {
-				w.Add(ev.Name)
-			}
-			go func(n string) {
-				m.Lock()
-				defer func() {
-					going = false
-					m.Unlock()
-				}()
-				if going {
-					return
-				}
-				going = true
-
-				if *r && cmd != nil {
-					if cmd.ProcessState == nil || !cmd.ProcessState.Exited() {
-						if cmd.Process != nil {
-							if err := cmd.Process.Signal(os.Interrupt); err != nil {
-								cmd.Process.Kill()
-							}
-							cmd.Process.Wait()
-						}
-					}
-				}
-				cmd = exec.Command(flag.Arg(0))
-				args := make([]string, flag.NArg())
-				for i := 0; i < len(args); i++ {
-					args[i] = flag.Arg(i)
-					if args[i] == "/_" {
-						args[i] = n
-					}
-				}
-				cmd.Args = args
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				if *c {
-					cls()
-				}
-				if err := cmd.Start(); err != nil {
-					fmt.Fprintln(os.Stderr, os.Args[0], err)
-				}
-			}(ev.Name)
+			go app.run(ev.Name)
 		case err := <-w.Errors:
 			fmt.Fprintln(os.Stderr, os.Args[0], err)
 		}
