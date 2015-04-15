@@ -94,6 +94,7 @@ func main() {
 			m.Lock()
 			if _, ok := files[n]; !ok {
 				if fn, err := filepath.Abs(n); err == nil {
+					// handle long name
 					files[fn] = true
 					w.Add(n)
 				}
@@ -114,6 +115,7 @@ func main() {
 				continue
 			}
 			m.Lock()
+			// check as long name
 			if _, ok := files[fn]; !ok {
 				m.Unlock()
 				continue
