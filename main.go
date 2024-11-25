@@ -13,6 +13,12 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
+const name = "gotr"
+
+const version = "0.0.0"
+
+var revision = "HEAD"
+
 var (
 	m sync.Mutex
 	c = flag.Bool("c", false, "clear")
