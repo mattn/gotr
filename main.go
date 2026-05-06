@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"sync"
 
-	"gopkg.in/fsnotify.v1"
+	"github.com/gofsnotify/fsnotify"
 )
 
 const name = "gotr"
@@ -102,7 +102,7 @@ func main() {
 				if fn, err := filepath.Abs(n); err == nil {
 					// handle long name
 					files[fn] = true
-					w.Add(n)
+					w.Add(n, fsnotify.All)
 				}
 			}
 			m.Unlock()
@@ -113,8 +113,8 @@ func main() {
 	for {
 		select {
 		case ev := <-w.Events:
-			if ev.Op == fsnotify.Create || ev.Op == fsnotify.Rename {
-				w.Add(ev.Name)
+			if ev.Op.Has(fsnotify.Create) || ev.Op.Has(fsnotify.Rename) {
+				w.Add(ev.Name, fsnotify.All)
 			}
 			fn, err := filepath.Abs(ev.Name)
 			if err != nil {
