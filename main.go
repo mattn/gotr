@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/gofsnotify/fsnotify"
+	"github.com/fswatcher/fswatcher"
 )
 
 const name = "gotr"
@@ -85,7 +85,7 @@ func (g *gotr) run(n string) {
 func main() {
 	flag.Parse()
 
-	w, err := fsnotify.NewWatcher()
+	w, err := fswatcher.NewWatcher()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, os.Args[0], err)
 		os.Exit(1)
@@ -102,7 +102,7 @@ func main() {
 				if fn, err := filepath.Abs(n); err == nil {
 					// handle long name
 					files[fn] = true
-					w.Add(n, fsnotify.All)
+					w.Add(n, fswatcher.All)
 				}
 			}
 			m.Unlock()
@@ -113,8 +113,8 @@ func main() {
 	for {
 		select {
 		case ev := <-w.Events:
-			if ev.Op.Has(fsnotify.Create) || ev.Op.Has(fsnotify.Rename) {
-				w.Add(ev.Name, fsnotify.All)
+			if ev.Op.Has(fswatcher.Create) || ev.Op.Has(fswatcher.Rename) {
+				w.Add(ev.Name, fswatcher.All)
 			}
 			fn, err := filepath.Abs(ev.Name)
 			if err != nil {
